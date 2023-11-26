@@ -17,6 +17,7 @@ import re
 p_clip = re.compile(r"/watch\?[a-zA-Z0-9?&=_-]*?v=(?P<vid>[a-zA-Z0-9_-]+)&?")
 p_playlist = re.compile(r"/(watch|playlist)\?[a-zA-Z0-9?&=_-]*?list=(?P<playlist>[a-zA-Z0-9_-]+)&?")
 p_channel = re.compile(r"youtube\.com/(?P<channel>(c/|user/|channel/)?[\w%-]+)/?")
+p_channel_handle = re.compile(r"youtube\.com/(?P<channel>(@[%\w\d_\-]+)(\/.*)?)")
 p_vid = re.compile(r"(/embed|youtu\.be)/(?P<vid>[a-zA-Z0-9_-]+)\??")
 
 def resource_path(relative_path):
@@ -105,7 +106,7 @@ class ThumbnailDownloader(QThread):
         self.pBar_setRange.emit(0, 0)
         self.driver.get(url)
 
-        elements = self.driver.find_elements(By.XPATH, '//*[@id="video-title"]')
+        elements = self.driver.find_elements(By.CSS_SELECTOR,'a#video-title-link')
         last_num = len(elements)
         reload_count = 0
 
@@ -118,7 +119,7 @@ class ThumbnailDownloader(QThread):
             self.driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
             sleep(1)
 
-            elements = self.driver.find_elements(By.XPATH, '//*[@id="video-title"]')
+            elements = self.driver.find_elements(By.CSS_SELECTOR,'a#video-title-link')
             current_num = len(elements)
             if last_num != current_num:
                 last_num = current_num
@@ -273,6 +274,7 @@ class MainWindow(QWidget):
         s_clip = p_clip.search(url)
         s_playlist = p_playlist.search(url)
         s_channel = p_channel.search(url)
+        s_channel_handle = p_channel_handle.search(url)
         s_vid = p_vid.search(url)
 
         if s_clip:
@@ -296,6 +298,10 @@ class MainWindow(QWidget):
             self.download_start(playlist_url, save_dir)
         elif s_channel:
             channel = s_channel.group('channel')
+            channel_url = f'https://youtube.com/{channel}/videos?sort=da'
+            self.download_start(channel_url, save_dir)
+        elif s_channel_handle:
+            channel = s_channel_handle.group('channel')
             channel_url = f'https://youtube.com/{channel}/videos?sort=da'
             self.download_start(channel_url, save_dir)
         elif s_vid:
